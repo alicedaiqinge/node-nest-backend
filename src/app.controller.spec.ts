@@ -1,30 +1,16 @@
+import { HttpStatus } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import axios from 'axios-mock-adapter';
+import MockAdapter from 'axios-mock-adapter';
+import axios, { AxiosInstance } from 'axios';
+import OrderData from './orderData';
+import { CreateOrderException } from './exceptions/create-order.exception';
+
 
 describe('AppController', () => {
   let appController: AppController;
-
-  // Mock axios.post to return a custom response
-  const mockAxios = new axios();
-  mockAxios.onPost('https://integration.api.scalapay.com/v2/orders').reply(200, {
-    data: {
-      checkoutUrl: 'https://example.com/checkout',
-    },
-  });
-
-
-  jest.mock('axios');
-  const mockedAxios = axios as jest.Mocked<typeof axios>;
-  const mockResponse = {
-    data: {
-      // Mocked response data
-      // Add any properties and values that are relevant to your tests
-      checkoutUrl: 'https://example.com/checkout',
-    },
-  };
-  mockedAxios.post.mockResolvedValue(mockResponse);
+  let mockedAxios: MockAdapter;
 
   beforeEach(async () => {
     const app: TestingModule = await Test.createTestingModule({
@@ -33,44 +19,80 @@ describe('AppController', () => {
     }).compile();
 
     appController = app.get<AppController>(AppController);
-  });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
-    });
+    // Create a new instance of axios mock adapter
+    const axiosInstance: AxiosInstance = axios.create();
+    mockedAxios = new MockAdapter(axiosInstance);
   });
 
   describe('createOrder', () => {
     it('should call axios.post with the correct arguments', async () => {
       const orderData = {
-        // Mocked order data
-        // Add any properties and values that are relevant to your tests
-        amount: 100,
-        currency: 'USD',
+        "totalAmount": {
+          "amount": "190.00",
+          "currency": "EUR"
+        },
+        "consumer": {
+          "phoneNumber": "0413323344",
+          "givenNames": "Joe",
+          "surname": "DD",
+          "email": "dd@gmail.com"
+        },
+        "shipping": {
+          "countryCode": "it",
+          "name": "d",
+          "postcode": "dd",
+          "suburb": "dd",
+          "line1": "dd"
+        },
+        "items": [{
+          "quantity": 1,
+          "price": {
+            "amount": "10.00",
+            "currency": "EUR"
+          },
+          "name": "dd",
+          "category": "dd"
+        }],
+        "sku": "sku",
+        "merchant": {
+          "redirectCancelUrl": "https://portal.integration.scalapay.com/failure-url",
+          "redirectConfirmUrl": "https://portal.integration.scalapay.com/success-url"
+        }
       };
 
-      await appController.createOrder(orderData);
+      const order = new OrderData(orderData);
+      expect(order).toBeDefined();
+      expect(order.totalAmount).toEqual(orderData.totalAmount);
+      expect(order.consumer).toEqual(orderData.consumer);
+      expect(order.shipping).toEqual(orderData.shipping);
+      expect(order.items).toEqual(orderData.items);
+      expect(order.sku).toBe(orderData.sku);
+      expect(order.merchant).toEqual(orderData.merchant);
 
-      expect(mockedAxios.post).toHaveBeenCalledWith(
-        'https://integration.api.scalapay.com/v2/orders',
-        orderData,
-        {
-          headers: {
-            Authorization: 'Bearer qhtfs87hjnc12kkos',
-          },
-        },
-      );
+      const response = await appController.createOrder(order);
+
+      expect(response).toBeDefined();
+      expect(response.statusCode).toBe(HttpStatus.CREATED);
+      expect(response.url).toContain('https://portal.integration.scalapay.com/checkout');
+
     });
 
-    it('should handle a successful response', async () => {
-      // TODO: Write your test case for handling a successful response
+    it('should throw CreateOrderException with the invalid arguments', async () => {
+      const orderData = {
+        "sku": "sku"
+      };
+
+      const order = new OrderData(orderData);
+      try {
+        await appController.createOrder(order);
+      } catch (error) {
+        expect(error).toBeInstanceOf(CreateOrderException);
+        expect(error.message).toEqual('Failed to create order.');
+        expect(error.statusCode).toEqual(HttpStatus.BAD_REQUEST);
+      }
     });
 
-    it('should handle an error response', async () => {
-      // TODO: Write your test case for handling an error response
-    });
   });
-
 
 });

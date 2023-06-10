@@ -1,7 +1,7 @@
 ## Description
 Tech stack: node.js, nest.js, node-fetch, etc.
 
-[Nest] Providing Post request "scalapay/orders" to create orders.
+Providing Post request "scalapay/orders" to create orders.
 - Call the v2/orders endpoint.
 - Redirect the user to the checkoutUrl provided in the response.
 
