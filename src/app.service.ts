@@ -21,7 +21,6 @@ export class AppService {
         const checkoutUrl = responseData.data.checkoutUrl;
         return { statusCode: HttpStatus.CREATED, url: checkoutUrl };
       } else {
-        console.log("else condition=" + responseData.data.message.errors);
         throw new CreateOrderException('Failed to create order: ' + responseData.data.message.errors, HttpStatus.BAD_REQUEST);
       }
     } catch (error) {
